@@ -1,29 +1,21 @@
 import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AppText } from '@/shared/ui/app-text';
+import { Screen } from '@/shared/ui/screen';
 
 export default function ModalScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
-      </Link>
-    </ThemedView>
+    <Screen contentClassName="justify-center">
+      <View className="gap-5 rounded-[32px] border border-[#d8e5d8] bg-white p-6 dark:border-[#293329] dark:bg-[#171c17]">
+        <AppText variant="headline">Modal</AppText>
+        <AppText variant="muted">Use this route for focused flows that should sit above the main app stack.</AppText>
+        <Link dismissTo href="/">
+          <AppText variant="body" className="font-semibold text-[#237f39] dark:text-[#53cb6d]">
+            Back to start
+          </AppText>
+        </Link>
+      </View>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-});

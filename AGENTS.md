@@ -14,6 +14,7 @@ This file defines the default implementation rules for work inside `fit-life-app
 ## Architecture
 
 - Follow Feature-Sliced Design.
+- Keep the app modular and feature-contained. New code should be organized into isolated feature slices with clear ownership and minimal coupling.
 - Organize code by responsibility, not by file type only.
 - Use this direction when adding new code:
   - `app` for routing, layouts, and screen entry points.
