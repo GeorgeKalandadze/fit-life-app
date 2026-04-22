@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useFormik } from 'formik';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
+import { loginValidationSchema, type LoginFormValues } from '@/features/auth/model/auth-form';
 import { useLoginMutation } from '@/features/auth/model/auth-query';
 import { ApiError } from '@/shared/api/http';
 import { AppButton } from '@/shared/ui/app-button';
@@ -10,29 +11,32 @@ import { AppText } from '@/shared/ui/app-text';
 
 export function LoginForm() {
   const loginMutation = useLoginMutation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
+  const form = useFormik<LoginFormValues>({
+    initialValues: {
+      email: '',
+      password: '',
+    },
+    validationSchema: loginValidationSchema,
+    validateOnChange: false,
+    onSubmit: async (values, helpers) => {
+      helpers.setStatus(undefined);
 
-  async function submit() {
-    setFormError(null);
+      try {
+        await loginMutation.mutateAsync({
+          email: values.email.trim(),
+          password: values.password,
+        });
 
-    if (!email.trim() || !password.trim()) {
-      setFormError('Email and password are required.');
-      return;
-    }
-
-    try {
-      await loginMutation.mutateAsync({
-        email: email.trim(),
-        password,
-      });
-
-      router.replace('/(tabs)');
-    } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : 'Unable to sign in right now.');
-    }
-  }
+        router.replace('/(tabs)');
+      } catch (error) {
+        helpers.setStatus(
+          error instanceof ApiError ? error.message : 'Unable to sign in right now.'
+        );
+      } finally {
+        helpers.setSubmitting(false);
+      }
+    },
+  });
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -40,29 +44,37 @@ export function LoginForm() {
         <AppInput
           autoCapitalize="none"
           autoComplete="email"
+          error={form.touched.email ? form.errors.email : undefined}
           keyboardType="email-address"
           label="Email"
-          onChangeText={setEmail}
+          onBlur={form.handleBlur('email')}
+          onChangeText={form.handleChange('email')}
           placeholder="you@fitlife.app"
-          value={email}
+          value={form.values.email}
         />
         <AppInput
           autoCapitalize="none"
           autoComplete="password"
+          error={form.touched.password ? form.errors.password : undefined}
           label="Password"
-          onChangeText={setPassword}
+          onBlur={form.handleBlur('password')}
+          onChangeText={form.handleChange('password')}
           placeholder="Enter your password"
           secureTextEntry
-          value={password}
+          value={form.values.password}
         />
 
-        {formError ? (
+        {typeof form.status === 'string' ? (
           <AppText variant="muted" className="rounded-2xl bg-[#fff1ef] px-4 py-3 text-[#b44337] dark:bg-[#311614] dark:text-[#ffb3aa]">
-            {formError}
+            {form.status}
           </AppText>
         ) : null}
 
-        <AppButton label="Sign in" loading={loginMutation.isPending} onPress={submit} />
+        <AppButton
+          label="Sign in"
+          loading={loginMutation.isPending || form.isSubmitting}
+          onPress={form.submitForm}
+        />
 
         <View className="flex-row items-center justify-center gap-1 pt-2">
           <AppText variant="muted">New here?</AppText>

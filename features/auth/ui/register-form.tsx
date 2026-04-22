@@ -1,7 +1,11 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useFormik } from 'formik';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
+import {
+  registerValidationSchema,
+  type RegisterFormValues,
+} from '@/features/auth/model/auth-form';
 import { useRegisterMutation } from '@/features/auth/model/auth-query';
 import { ApiError } from '@/shared/api/http';
 import { AppButton } from '@/shared/ui/app-button';
@@ -10,38 +14,36 @@ import { AppText } from '@/shared/ui/app-text';
 
 export function RegisterForm() {
   const registerMutation = useRegisterMutation();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
+  const form = useFormik<RegisterFormValues>({
+    initialValues: {
+      name: '',
+      email: '',
+      password: '',
+      passwordConfirmation: '',
+    },
+    validationSchema: registerValidationSchema,
+    validateOnChange: false,
+    onSubmit: async (values, helpers) => {
+      helpers.setStatus(undefined);
 
-  async function submit() {
-    setFormError(null);
+      try {
+        await registerMutation.mutateAsync({
+          name: values.name.trim(),
+          email: values.email.trim(),
+          password: values.password,
+          password_confirmation: values.passwordConfirmation,
+        });
 
-    if (!name.trim() || !email.trim() || !password || !passwordConfirmation) {
-      setFormError('All fields are required.');
-      return;
-    }
-
-    if (password !== passwordConfirmation) {
-      setFormError('Passwords do not match.');
-      return;
-    }
-
-    try {
-      await registerMutation.mutateAsync({
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        password_confirmation: passwordConfirmation,
-      });
-
-      router.replace('/(tabs)');
-    } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : 'Unable to create your account.');
-    }
-  }
+        router.replace('/(tabs)');
+      } catch (error) {
+        helpers.setStatus(
+          error instanceof ApiError ? error.message : 'Unable to create your account.'
+        );
+      } finally {
+        helpers.setSubmitting(false);
+      }
+    },
+  });
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -49,47 +51,59 @@ export function RegisterForm() {
         <AppInput
           autoCapitalize="words"
           autoComplete="name"
+          error={form.touched.name ? form.errors.name : undefined}
           label="Full name"
-          onChangeText={setName}
+          onBlur={form.handleBlur('name')}
+          onChangeText={form.handleChange('name')}
           placeholder="Avery Carter"
-          value={name}
+          value={form.values.name}
         />
         <AppInput
           autoCapitalize="none"
           autoComplete="email"
+          error={form.touched.email ? form.errors.email : undefined}
           keyboardType="email-address"
           label="Email"
-          onChangeText={setEmail}
+          onBlur={form.handleBlur('email')}
+          onChangeText={form.handleChange('email')}
           placeholder="you@fitlife.app"
-          value={email}
+          value={form.values.email}
         />
         <AppInput
           autoCapitalize="none"
           autoComplete="new-password"
+          error={form.touched.password ? form.errors.password : undefined}
           hint="Use at least 8 characters."
           label="Password"
-          onChangeText={setPassword}
+          onBlur={form.handleBlur('password')}
+          onChangeText={form.handleChange('password')}
           placeholder="Create a password"
           secureTextEntry
-          value={password}
+          value={form.values.password}
         />
         <AppInput
           autoCapitalize="none"
           autoComplete="new-password"
+          error={form.touched.passwordConfirmation ? form.errors.passwordConfirmation : undefined}
           label="Confirm password"
-          onChangeText={setPasswordConfirmation}
+          onBlur={form.handleBlur('passwordConfirmation')}
+          onChangeText={form.handleChange('passwordConfirmation')}
           placeholder="Repeat your password"
           secureTextEntry
-          value={passwordConfirmation}
+          value={form.values.passwordConfirmation}
         />
 
-        {formError ? (
+        {typeof form.status === 'string' ? (
           <AppText variant="muted" className="rounded-2xl bg-[#fff1ef] px-4 py-3 text-[#b44337] dark:bg-[#311614] dark:text-[#ffb3aa]">
-            {formError}
+            {form.status}
           </AppText>
         ) : null}
 
-        <AppButton label="Create account" loading={registerMutation.isPending} onPress={submit} />
+        <AppButton
+          label="Create account"
+          loading={registerMutation.isPending || form.isSubmitting}
+          onPress={form.submitForm}
+        />
 
         <View className="flex-row items-center justify-center gap-1 pt-2">
           <AppText variant="muted">Already have an account?</AppText>
